@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-800 text-white">
+    <section class="py-12">
+        <div class="px-4 max-w-[1200px] mx-auto flex flex-col items-center">
+            <h4 class="mb-8 font-bold text-xl">Alpine.js SWR</h4>
+            <div x-data="characters" class="w-full flex justify-center">
+                <template x-if="!!$data?.data">
+                    <div class="flex flex-col items-center gap-4 md:gap-6 w-full">
+                        <template x-for="item in $data?.data">
+                            <div class="flex w-full md:w-96 max-w-[400px] h-44 rounded-md overflow-hidden hover:scale-105 duration-200">
+                                <div class="w-1/3 h-full">
+                                    <img :src="item?.image" class="w-full h-full object-cover"/>
+                                </div>
+                                <div class="w-2/3 h-full p-4 bg-gray-700 text-white flex flex-col gap-1">
+                                    <p x-text="item.name" class="font-bold text-xl mb-1"></p>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <template x-if="item.status=='Alive'">
+                                                <div class="w-4 h-4 rounded-full bg-lime-500"></div>
+                                            </template>
+                                            <template x-if="item.status=='Dead'">
+                                                <div class="w-4 h-4 rounded-full bg-rose-600"></div>
+                                            </template>
+                                            <template x-if="item.status=='unknown'">
+                                                <div class="w-4 h-4 rounded-full bg-gray-400"></div>
+                                            </template>
+                                            <p x-text="item.status" class="capitalize"></p>
+                                        </div>
+                                        <p x-text="item.species"></p>
+                                    </div>
+                                    <p x-text="item.origin?.name"></p>
+                                    <p x-text="item.gender"></p>
+                                    
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div> 
+        </div>
+     
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document?.addEventListener('alpine:init', () => {
+            const api = axios.create({
+                baseURL: 'https://rickandmortyapi.com/api'
+            })
+    
+            class CharactersService {
+                getCharacters = async () => {
+                    const response = await api.get(`/character`)
+               
+                    return response?.data?.results
+                }
+            }
+    
+            const charactersService = new CharactersService();
+    
+            const useSWR = (key, callback, options = {
+                isLoadingKey: `isLoading`,
+                dataKey: `data`,
+                errorKey: `error`,
+                mutationKey: `mutate`
+            }) => {
+                Alpine?.data(key, () => ({
+                    init(){
+                        this.mutate()
+                    },
+                    [options?.isLoading || 'isLoading']: true,
+                    [options?.dataKey || 'data']: null,
+                    [options?.errorKey || 'error']: null,
+                    async [options?.mutationKey || 'mutate']() {
+                        if(!key) return;
+
+                        if(!callback) {
+                            console.warn(`callback for ${key} hook is invalid: ${typeof callback}`)
+                            return
+                        }
+
+                        this.isLoading = true;
+                        try {
+                            this.data = await callback()
+                        }catch(error){
+                            this.error = error
+                        }
+                        this.isLoading = false;
+                    }
+                }));               
+            }
+
+            const useGetCharacters = () => {
+                useSWR(`characters`, () => charactersService?.getCharacters())
+            }
+
+            useGetCharacters()
+    
+        })
+    </script>
+</body>
+</html>
